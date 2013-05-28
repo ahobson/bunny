@@ -827,6 +827,12 @@ module Bunny
       raise_if_no_longer_open!
       maybe_start_consumer_work_pool!
 
+      # helps avoid race condition between basic.consume-ok and basic.deliver if there are messages
+      # in the queue already. MK.
+      if consumer.consumer_tag && consumer.consumer_tag.strip != AMQ::Protocol::EMPTY_STRING
+        register_consumer(consumer.consumer_tag, consumer)
+      end
+
       @connection.send_frame(AMQ::Protocol::Basic::Consume.encode(@id,
                                                                   consumer.queue_name,
                                                                   consumer.consumer_tag,
@@ -835,12 +841,6 @@ module Bunny
                                                                   consumer.exclusive,
                                                                   false,
                                                                   consumer.arguments))
-
-      # helps avoid race condition between basic.consume-ok and basic.deliver if there are messages
-      # in the queue already. MK.
-      if consumer.consumer_tag && consumer.consumer_tag.strip != AMQ::Protocol::EMPTY_STRING
-        register_consumer(consumer.consumer_tag, consumer)
-      end
 
       Bunny::Timer.timeout(read_write_timeout, ClientTimeout) do
         @last_basic_consume_ok = wait_on_continuations
