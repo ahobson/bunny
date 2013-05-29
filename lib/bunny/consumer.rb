@@ -38,6 +38,7 @@ module Bunny
       @exclusive     = exclusive
       @arguments     = arguments
       @no_ack        = no_ack
+      @cancellations = ::Queue.new
     end
 
     # Defines message delivery handler
@@ -76,7 +77,14 @@ module Bunny
     # @see http://rubybunny.info/articles/queues.html Queues and Consumers guide
     # @api public
     def cancel
-      @channel.basic_cancel(@consumer_tag)
+      basic_cancel_ok = @channel.basic_cancel(@consumer_tag)
+      @cancellations.push(basic_cancel_ok)
+      basic_cancel_ok
+    end
+
+    # Waits for cancel using blocking Thread Queue
+    def wait_for_cancel
+      @cancellations.pop
     end
 
     def inspect

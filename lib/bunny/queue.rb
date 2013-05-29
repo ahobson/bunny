@@ -155,6 +155,7 @@ module Bunny
     # @option opts [Boolean] :manual_ack (false) Will this consumer use manual acknowledgements?
     # @option opts [Boolean] :exclusive (false) Should this consumer be exclusive for this queue?
     # @option opts [Boolean] :block (false) Should the call block calling thread?
+    # @option opts [Boolean] :wait_for_cancel (false) Should the calling thread wait for cancellation?
     # @option opts [#call] :on_cancellation Block to execute when this consumer is cancelled remotely (e.g. via the RabbitMQ Management plugin)
     # @option opts [String] :consumer_tag Unique consumer identifier. It is usually recommended to let Bunny generate it for you.
     # @option opts [Hash] :arguments ({}) Additional (optional) arguments, typically used by RabbitMQ extensions
@@ -181,6 +182,11 @@ module Bunny
       consumer.on_cancellation(&opts[:on_cancellation]) if opts[:on_cancellation]
 
       @channel.basic_consume_with(consumer)
+      if opts[:wait_for_cancel]
+        # wait until consumer is cancelled
+        consumer.wait_for_cancel
+      end
+
       if opts[:block]
         # joins current thread with the consumers pool, will block
         # the current thread for as long as the consumer pool is active
